@@ -3,29 +3,28 @@ version: 0.2
 env:
   variables:
     AWS_REGION: ap-south-1
-    REPO_NAME: contact-springboot-app  # ECR repository name (create this in ECR)
+    REPO_NAME: contact-springboot-app
 
 phases:
   pre_build:
     commands:
-      - echo "Resolving AWS account and ECR URI..."
+      - echo Logging in to Amazon ECR...
       - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
       - ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${REPO_NAME}
-      - echo "Logging into Amazon ECR ${ECR_URI}"
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
   build:
     commands:
-      - echo "Building Spring Boot JAR..."
+      - echo Building application...
       - mvn -q -DskipTests clean package
-      - echo "Building Docker image..."
+      - echo Building Docker image...
       - docker build -t $ECR_URI:latest .
 
   post_build:
     commands:
-      - echo "Pushing image to ECR..."
+      - echo Pushing Docker image...
       - docker push $ECR_URI:latest
-      - echo "Generating imagedefinitions.json for ECS deploy..."
+      - echo Creating imagedefinitions.json...
       - printf '[{"name":"app","imageUri":"%s"}]' $ECR_URI:latest > imagedefinitions.json
 
 artifacts:
